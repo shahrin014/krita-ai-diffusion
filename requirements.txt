@@ -13,3 +13,6 @@ pytest
 tqdm
 PyQt5
 Pillow
+
+# Docker builds
+requests
