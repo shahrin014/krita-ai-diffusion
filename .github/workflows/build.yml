@@ -32,10 +32,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Extract docker tags and metadata
-        run: echo "VERSION="$(python -c "import ai_diffusion; print(ai_diffusion.__version__)") >> $GITHUB_ENV
+        run: |
+          echo "VERSION="$(python -c "import ai_diffusion; print(ai_diffusion.__version__)") >> $GITHUB_ENV
 
-      - name: Test getting tags
-        run: echo $VERSION
+      - name: Docker build preparation
+        run: python scripts/docker.py
+
       # - name: Log in to Docker Hub
       #   uses: docker/login-action@v3
       #   with:
