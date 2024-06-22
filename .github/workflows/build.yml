@@ -8,47 +8,85 @@ on:
   #   types: [published]
 
 jobs:
-  push_to_registry:
-    name: Push Docker image to Docker Hub
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-      attestations: write
-      id-token: write
+
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v4
-        with:
-          submodules: true
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-          cache: "pip"
-
-      - name: Dependencies
-        run: pip install -r requirements.txt
-
-      - name: Extract docker tags and metadata
+      - name: Start Runpod instance
+        id: start_runpod
         run: |
-          echo "VERSION="$(python -c "import ai_diffusion; print(ai_diffusion.__version__)") >> $GITHUB_ENV
+          RUNPOD_API_TOKEN="${{ secrets.RUNPOD_API_TOKEN }}"
+          GPU_TYPE="NVIDIA GeForce RTX 4070 Ti"
+          IMAGE_NAME="runpod/ubuntu:22.04"
+          START_RESPONSE=$(curl -s -X POST "https://api.runpod.io/instance/start" \
+            -H "Authorization: Bearer $RUNPOD_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "gpuType":"'"$GPU_TYPE"'",
+              "imageName":"'"$IMAGE_NAME"'",
+              "cloudType": "COMMUNITY",
+            }')
+          INSTANCE_ID=$(echo $START_RESPONSE | jq -r '.id')
+          echo "::set-output name=instance_id::$INSTANCE_ID"
 
-      - name: Docker build preparation
-        run: python scripts/docker.py
+      - name: Wait for Runpod instance to be ready
+        run: |
+          INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
+          RUNPOD_API_TOKEN="YOUR_RUNPOD_API_TOKEN"
+          while true; do
+            STATUS_RESPONSE=$(curl -s -X GET "https://api.runpod.io/instance/$INSTANCE_ID/status" \
+              -H "Authorization: Bearer $RUNPOD_API_TOKEN")
+            STATUS=$(echo $STATUS_RESPONSE | jq -r '.status')
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "Instance is running."
+              break
+            else
+              echo "Waiting for instance to be ready..."
+              sleep 10
+            fi
+          done
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Get Runpod instance SSH details
+        id: get_ssh_details
+        run: |
+          INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
+          RUNPOD_API_TOKEN="YOUR_RUNPOD_API_TOKEN"
+          SSH_RESPONSE=$(curl -s -X GET "https://api.runpod.io/instance/$INSTANCE_ID/ssh" \
+            -H "Authorization: Bearer $RUNPOD_API_TOKEN")
+          SSH_HOST=$(echo $SSH_RESPONSE | jq -r '.host')
+          SSH_USER=$(echo $SSH_RESPONSE | jq -r '.user')
+          SSH_KEY=$(echo $SSH_RESPONSE | jq -r '.key')
+          echo "$SSH_KEY" > runpod_ssh_key
+          chmod 600 runpod_ssh_key
+          echo "::set-output name=ssh_host::$SSH_HOST"
+          echo "::set-output name=ssh_user::$SSH_USER"
 
-      - name: Build and push Docker image
-        id: push
-        uses: docker/build-push-action@v5
-        with:
-          context: scripts/docker
-          file: ./Dockerfile
-          push: true
-          tags: "${{ vars.DOCKER_REPOSITORY }}/krita-ai-diffusion:${VERSION}"
+      - name: SSH and run commands on Runpod instance
+        env:
+          REPOSITORY: ${{ github.repository }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          SSH_HOST="${{ steps.get_ssh_details.outputs.ssh_host }}"
+          SSH_USER="${{ steps.get_ssh_details.outputs.ssh_user }}"
+          ssh -i runpod_ssh_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << EOF
+            git clone https://github.com/$REPOSITORY.git
+            cd $(basename "$REPOSITORY")
+            VERSION=$(python -c "import ai_diffusion; print(ai_diffusion.__version__)")
+            pip install -r requirements.txt
+            python scripts/docker.py 
+            docker build -t $DOCKERHUB_USERNAME/$(basename "$REPOSITORY"):$VERSION scripts/docker
+            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+            docker push $DOCKERHUB_USERNAME/$(basename "$REPOSITORY"):$VERSION
+          EOF
+
+      - name: Terminate Runpod instance
+        run: |
+          INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
+          RUNPOD_API_TOKEN="YOUR_RUNPOD_API_TOKEN"
+          curl -s -X POST "https://api.runpod.io/instance/$INSTANCE_ID/terminate" \
+            -H "Authorization: Bearer $RUNPOD_API_TOKEN" \
+            -H "Content-Type: application/json"
