@@ -44,9 +44,7 @@ jobs:
           RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
         run: |
 
-          echo ${{ steps.start_runpod.outputs.instance_id }}"
-
-
+          echo "${{ steps.start_runpod.outputs.instance_id }}"
 
           INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
           while true; do
