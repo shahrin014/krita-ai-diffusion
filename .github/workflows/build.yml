@@ -34,12 +34,20 @@ jobs:
             }')
 
           INSTANCE_ID=$($START_RESPONSE | jq -r '.data.deployCpuPod.id')
-          echo "instanceId=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
 
-      # - name: Wait for Runpod instance to be ready
-      #   env:
-      #     RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
-      #   run: |
+      - name: Wait for Runpod instance to be ready
+        env:
+          RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
+        run: |
+
+          echo ${{ steps.start_runpod.outputs.instance_id }}"
+          RESPONSE=$(curl  \
+            --request POST \
+            --header 'content-type: application/json' \
+            --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
+            --data-raw '{"operationName":"myPods","variables":{},"query":"query myPods {\n  myself {\n    id\n    clientBalance\n    savingsPlans {\n      startTime\n      endTime\n      gpuTypeId\n      podId\n      costPerHr\n      __typename\n    }\n    pods {\n      savingsPlans {\n        gpuTypeId\n        endTime\n        costPerHr\n        __typename\n      }\n      containerDiskInGb\n      containerRegistryAuthId\n      costPerHr\n      adjustedCostPerHr\n      desiredStatus\n      dockerArgs\n      dockerId\n      env\n      gpuCount\n      id\n      imageName\n      lastStatusChange\n      locked\n      machineId\n      memoryInGb\n      name\n      networkVolume {\n        id\n        name\n        size\n        __typename\n      }\n      cpuFlavorId\n      machineType\n      cpuFlavor {\n        groupName\n        displayName\n        __typename\n      }\n      podType\n      port\n      ports\n      templateId\n      uptimeSeconds\n      vcpuCount\n      version\n      volumeEncrypted\n      volumeInGb\n      volumeMountPath\n      machine {\n        costPerHr\n        currentPricePerGpu\n        diskMBps\n        gpuAvailable\n        gpuDisplayName\n        location\n        maintenanceEnd\n        maintenanceNote\n        maintenanceStart\n        minPodGpuCount\n        maxDownloadSpeedMbps\n        maxUploadSpeedMbps\n        note\n        podHostId\n        secureCloud\n        supportPublicIp\n        gpuTypeId\n        gpuType {\n          secureSpotPrice\n          communitySpotPrice\n          oneMonthPrice\n          threeMonthPrice\n          sixMonthPrice\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"}'
+
       #     INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
       #     while true; do
       #       STATUS_RESPONSE=$(curl -s -X GET "https://api.runpod.io/instance/$INSTANCE_ID/status" \
