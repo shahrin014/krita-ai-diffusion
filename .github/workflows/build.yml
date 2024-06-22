@@ -17,8 +17,9 @@ jobs:
 
       - name: Start Runpod instance
         id: start_runpod
+        env:
+          RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
         run: |
-          RUNPOD_API_TOKEN="${{ secrets.RUNPOD_API_TOKEN }}"
           GPU_TYPE="NVIDIA GeForce RTX 4070 Ti"
           IMAGE_NAME="runpod/ubuntu:22.04"
           START_RESPONSE=$(curl -s -X POST "https://api.runpod.io/instance/start" \
@@ -33,9 +34,10 @@ jobs:
           echo "::set-output name=instance_id::$INSTANCE_ID"
 
       - name: Wait for Runpod instance to be ready
+        env:
+          RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
         run: |
           INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
-          RUNPOD_API_TOKEN="YOUR_RUNPOD_API_TOKEN"
           while true; do
             STATUS_RESPONSE=$(curl -s -X GET "https://api.runpod.io/instance/$INSTANCE_ID/status" \
               -H "Authorization: Bearer $RUNPOD_API_TOKEN")
@@ -51,9 +53,10 @@ jobs:
 
       - name: Get Runpod instance SSH details
         id: get_ssh_details
+        env:
+          RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
         run: |
           INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
-          RUNPOD_API_TOKEN="YOUR_RUNPOD_API_TOKEN"
           SSH_RESPONSE=$(curl -s -X GET "https://api.runpod.io/instance/$INSTANCE_ID/ssh" \
             -H "Authorization: Bearer $RUNPOD_API_TOKEN")
           SSH_HOST=$(echo $SSH_RESPONSE | jq -r '.host')
