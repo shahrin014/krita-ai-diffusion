@@ -23,16 +23,16 @@ jobs:
           GPU_TYPE="NVIDIA GeForce RTX 4070 Ti"
           IMAGE_NAME="runpod/ubuntu:22.04"
 
-        START_RESPONSE=$(curl \
-          --request POST \
-          --header 'content-type: application/json' \
-          --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
-          --data-raw $'{
-            "operationName":"Mutation",
-            "variables":{"input":{"instanceId":"cpu3c-16-32","cloudType":"SECURE","containerDiskInGb":5,"deployCost":0.48,"dataCenterId":null,"networkVolumeId":null,"startJupyter":true,"startSsh":true,"templateId":"runpod-ubuntu","volumeKey":null,"ports":"22/tcp"}},
-            "query":"mutation Mutation($input: deployCpuPodInput\u0021) {\\n  deployCpuPod(input: $input) {\\n    id\\n    imageName\\n    env\\n    machineId\\n    machine {\\n      podHostId\\n      __typename\\n    }\\n    __typename\\n  }\\n}"
-          }')
-          
+          START_RESPONSE=$(curl \
+            --request POST \
+            --header 'content-type: application/json' \
+            --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
+            --data-raw $'{
+              "operationName":"Mutation",
+              "variables":{"input":{"instanceId":"cpu3c-16-32","cloudType":"SECURE","containerDiskInGb":5,"deployCost":0.48,"dataCenterId":null,"networkVolumeId":null,"startJupyter":true,"startSsh":true,"templateId":"runpod-ubuntu","volumeKey":null,"ports":"22/tcp"}},
+              "query":"mutation Mutation($input: deployCpuPodInput\u0021) {\\n  deployCpuPod(input: $input) {\\n    id\\n    imageName\\n    env\\n    machineId\\n    machine {\\n      podHostId\\n      __typename\\n    }\\n    __typename\\n  }\\n}"
+            }')
+
           INSTANCE_ID=$($START_RESPONSE | jq -r '.data.deployCpuPod.id')
           echo "instanceId=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
 
@@ -83,7 +83,7 @@ jobs:
       #       cd $(basename "$REPOSITORY")
       #       VERSION=$(python -c "import ai_diffusion; print(ai_diffusion.__version__)")
       #       pip install -r requirements.txt
-      #       python scripts/docker.py 
+      #       python scripts/docker.py
       #       docker build -t $DOCKERHUB_USERNAME/$(basename "$REPOSITORY"):$VERSION scripts/docker
       #       echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
       #       docker push $DOCKERHUB_USERNAME/$(basename "$REPOSITORY"):$VERSION
