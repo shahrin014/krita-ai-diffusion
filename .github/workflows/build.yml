@@ -24,7 +24,7 @@ jobs:
           IMAGE_NAME="runpod/ubuntu:22.04"
 
           START_RESPONSE=$(curl \
-            --silent
+            --silent \
             --request POST \
             --header 'content-type: application/json' \
             --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
@@ -50,7 +50,7 @@ jobs:
           INSTANCE_ID="${{ steps.start_runpod.outputs.instance_id }}"
           while true; do
             STATUS_RESPONSE=$(curl  \
-              --silent
+              --silent \
               --request POST \
               --header 'content-type: application/json' \
               --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
