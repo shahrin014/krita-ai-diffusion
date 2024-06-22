@@ -33,7 +33,7 @@ jobs:
               "query":"mutation Mutation($input: deployCpuPodInput\u0021) {\\n  deployCpuPod(input: $input) {\\n    id\\n    imageName\\n    env\\n    machineId\\n    machine {\\n      podHostId\\n      __typename\\n    }\\n    __typename\\n  }\\n}"
             }')
 
-          echo $START_RESPONSE
+          # echo $START_RESPONSE
 
           INSTANCE_ID=$(echo $START_RESPONSE | jq -r '.data.deployCpuPod.id')
           echo $INSTANCE_ID
@@ -54,7 +54,7 @@ jobs:
               --url "https://api.runpod.io/graphql?api_key=$RUNPOD_API_TOKEN" \
               --data-raw '{"operationName":"myPods","variables":{},"query":"query myPods {\n  myself {\n    id\n    clientBalance\n    savingsPlans {\n      startTime\n      endTime\n      gpuTypeId\n      podId\n      costPerHr\n      __typename\n    }\n    pods {\n      savingsPlans {\n        gpuTypeId\n        endTime\n        costPerHr\n        __typename\n      }\n      containerDiskInGb\n      containerRegistryAuthId\n      costPerHr\n      adjustedCostPerHr\n      desiredStatus\n      dockerArgs\n      dockerId\n      env\n      gpuCount\n      id\n      imageName\n      lastStatusChange\n      locked\n      machineId\n      memoryInGb\n      name\n      networkVolume {\n        id\n        name\n        size\n        __typename\n      }\n      cpuFlavorId\n      machineType\n      cpuFlavor {\n        groupName\n        displayName\n        __typename\n      }\n      podType\n      port\n      ports\n      templateId\n      uptimeSeconds\n      vcpuCount\n      version\n      volumeEncrypted\n      volumeInGb\n      volumeMountPath\n      machine {\n        costPerHr\n        currentPricePerGpu\n        diskMBps\n        gpuAvailable\n        gpuDisplayName\n        location\n        maintenanceEnd\n        maintenanceNote\n        maintenanceStart\n        minPodGpuCount\n        maxDownloadSpeedMbps\n        maxUploadSpeedMbps\n        note\n        podHostId\n        secureCloud\n        supportPublicIp\n        gpuTypeId\n        gpuType {\n          secureSpotPrice\n          communitySpotPrice\n          oneMonthPrice\n          threeMonthPrice\n          sixMonthPrice\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"}'
             )
-            STATUS=$(echo $RESPONSE | jq -r ".data.myself.pods[] | select(.id==\"llvbmslwli0x3r\") | .desiredStatus")
+            STATUS=$(echo $RESPONSE | jq -r ".data.myself.pods[] | select(.id==\"$INSTANCE_ID\") | .desiredStatus")
             if [ "$STATUS" == "RUNNING" ]; then
               echo "Instance is running."
               break
