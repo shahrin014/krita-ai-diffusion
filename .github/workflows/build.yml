@@ -20,9 +20,6 @@ jobs:
         env:
           RUNPOD_API_TOKEN: ${{ secrets.RUNPOD_API_TOKEN }}
         run: |
-          GPU_TYPE="NVIDIA GeForce RTX 4070 Ti"
-          IMAGE_NAME="runpod/ubuntu:22.04"
-
           START_RESPONSE=$(curl \
             --silent \
             --request POST \
@@ -34,11 +31,19 @@ jobs:
               "query":"mutation Mutation($input: deployCpuPodInput\u0021) {\\n  deployCpuPod(input: $input) {\\n    id\\n    imageName\\n    env\\n    machineId\\n    machine {\\n      podHostId\\n      __typename\\n    }\\n    __typename\\n  }\\n}"
             }')
 
-          # echo $START_RESPONSE
+          # Echo response while hiding pods secret environment variables
+          echo $START_RESPONSE | jq -r '.data.deployCpuPod.env |= "***"'
 
           INSTANCE_ID=$(echo $START_RESPONSE | jq -r '.data.deployCpuPod.id')
-          echo $INSTANCE_ID
+          POD_HOST_ID=$(echo $START_RESPONSE | jq -r '.data.deployCpuPod.machine.podHostId')
+          PUBLIC_KEY=$(echo $START_RESPONSE | jq -r '.data.deployCpuPod.env[] | select(startswith("PUBLIC_KEY"))' | sed -e 's/PUBLIC_KEY=//')
+
+          echo "Instance ID: $INSTANCE_ID"
+          echo "Pod Host ID: $POD_HOST_ID"
+
           echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "pod_host_id=$POD_HOST_ID" >> "$GITHUB_OUTPUT"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Wait for Runpod instance to be ready
         env:
